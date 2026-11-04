@@ -59,36 +59,16 @@ VirtualBox/VMware Ubuntu VM on your laptop instead; that's what the
 Mininet project itself recommends for exactly this reason.
 """
 
-from mininet.net import Mininet
-from mininet.node import OVSSwitch
 from mininet.cli import CLI
-from mininet.log import setLogLevel, info
+from mininet.log import info
+from net_builder import build_network   # shared by every stage, see net_builder.py
 
 
-def build_network():
-    # Mininet object: the container for our whole virtual network.
-    net = Mininet(switch=OVSSwitch, controller=None)
-
-    info("*** Adding switch (the virtual LAN cable everyone plugs into)\n")
-    s1 = net.addSwitch("s1")
-
-    info("*** Adding hosts\n")
-    # Each host gets a name, an IP address, and (implicitly) its own MAC
-    # address, just like a real computer would.
-    gateway  = net.addHost("h1", ip="10.0.0.1/24")   # pretend router
-    victim1  = net.addHost("h2", ip="10.0.0.2/24")   # normal user 1
-    victim2  = net.addHost("h3", ip="10.0.0.3/24")   # normal user 2
-    attacker = net.addHost("h4", ip="10.0.0.4/24")   # attacker machine
-
-    info("*** Wiring everyone into the same switch (shared LAN segment)\n")
-    net.addLink(gateway, s1)
-    net.addLink(victim1, s1)
-    net.addLink(victim2, s1)
-    net.addLink(attacker, s1)
+def run():
+    net = build_network()
 
     info("*** Starting the network\n")
-    net.build()
-    s1.start([])   # no SDN controller needed for a plain learning switch
+    net.start()
 
     info("*** Network is up. Try: pingall, or xterm h4 to open the attacker.\n")
     CLI(net)   # drops you into the interactive mininet> prompt
@@ -98,5 +78,4 @@ def build_network():
 
 
 if __name__ == "__main__":
-    setLogLevel("info")   # prints what Mininet is doing, useful while learning
-    build_network()
+    run()
