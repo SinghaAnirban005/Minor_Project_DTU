@@ -55,8 +55,14 @@ from net_builder import build_network, start_and_get_hosts, HOSTS   # noqa: E402
 CAPTURE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "capture")
 ATTACK_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "arp_spoof.py")
 
-DURATION_SECONDS = 30       # how long the attack runs
+# Both overridable via environment variables -- see run_pipeline.sh, which
+# uses this to run several, longer attack rounds without editing this file.
+DURATION_SECONDS = float(os.environ.get("DURATION_SECONDS", 30))
 POISON_INTERVAL = 2.0       # seconds between re-poisoning rounds
+
+# Set CAPTURE_RUN_ID (e.g. CAPTURE_RUN_ID=run2) to run this more than once
+# without each run overwriting the previous capture files.
+CAPTURE_RUN_ID = os.environ.get("CAPTURE_RUN_ID", "")
 
 ATTACK_VICTIM = "victim1"   # which host gets attacked
 ATTACK_GATEWAY = "gateway"  # the other end of the forged man-in-the-middle
@@ -84,10 +90,15 @@ def ip_for(name):
     raise ValueError(f"Unknown host name: {name}")
 
 
+def capture_filename(host_name):
+    suffix = f"_{CAPTURE_RUN_ID}" if CAPTURE_RUN_ID else ""
+    return f"{host_name}_attack{suffix}.pcap"
+
+
 def start_capture(hosts):
     os.makedirs(CAPTURE_DIR, exist_ok=True)
     for name, host in hosts.items():
-        pcap_path = os.path.join(CAPTURE_DIR, f"{name}_attack.pcap")
+        pcap_path = os.path.join(CAPTURE_DIR, capture_filename(name))
         iface = f"{host.name}-eth0"
         host.cmd(f"tcpdump -i {iface} arp -w {pcap_path} -U > /dev/null 2>&1 &")
     print(f"*** Capturing ARP traffic for every host into {CAPTURE_DIR}/*_attack.pcap")
@@ -124,14 +135,15 @@ def launch_attack(hosts):
     )
     # Run it and stream its own [arp_spoof] print statements to our terminal
     # so you can watch the attack happen, not just trust it silently worked.
-    attacker.cmd(f"{cmd} 2>&1 | tee {CAPTURE_DIR}/attack_log.txt &")
+    log_suffix = f"_{CAPTURE_RUN_ID}" if CAPTURE_RUN_ID else ""
+    attacker.cmd(f"{cmd} 2>&1 | tee {CAPTURE_DIR}/attack_log{log_suffix}.txt &")
 
 
 def check_captures_got_traffic():
     sizes = {}
     for info in HOSTS.values():
         name = info["name"]
-        path = os.path.join(CAPTURE_DIR, f"{name}_attack.pcap")
+        path = os.path.join(CAPTURE_DIR, capture_filename(name))
         sizes[name] = os.path.getsize(path) if os.path.exists(path) else 0
     if all(size <= 24 for size in sizes.values()):
         print("\nWARNING: every attack capture is empty. Check:")

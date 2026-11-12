@@ -61,19 +61,34 @@ from net_builder import build_network, start_and_get_hosts   # noqa: E402
 
 CAPTURE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DURATION_SECONDS = 60      # how long to generate traffic for
+# DURATION_SECONDS can be overridden with an environment variable, e.g.
+#     DURATION_SECONDS=120 python3 generate_normal_traffic.py
+# without editing this file -- used by run_pipeline.sh to generate a
+# bigger dataset without duplicating this script's logic.
+DURATION_SECONDS = float(os.environ.get("DURATION_SECONDS", 60))
 MIN_GAP_SECONDS = 0.5      # shortest pause between ARP exchanges
 MAX_GAP_SECONDS = 2.0      # longest pause between ARP exchanges
+
+# CAPTURE_RUN_ID: set this (e.g. CAPTURE_RUN_ID=run2) to run this script
+# more than once WITHOUT each run overwriting the previous capture files --
+# useful for building up a bigger dataset across several runs. Leave unset
+# for the original single-file-per-host behaviour.
+CAPTURE_RUN_ID = os.environ.get("CAPTURE_RUN_ID", "")
 
 # Only these three take part in "normal" traffic -- the attacker stays
 # silent in this stage, exactly like a quiet machine that hasn't attacked yet.
 NORMAL_HOSTS = ["gateway", "victim1", "victim2"]
 
 
+def capture_filename(host_name):
+    suffix = f"_{CAPTURE_RUN_ID}" if CAPTURE_RUN_ID else ""
+    return f"{host_name}_normal{suffix}.pcap"
+
+
 def start_capture(hosts):
     """Starts a background tcpdump on every host, ARP packets only."""
     for name, host in hosts.items():
-        pcap_path = os.path.join(CAPTURE_DIR, f"{name}_normal.pcap")
+        pcap_path = os.path.join(CAPTURE_DIR, capture_filename(name))
         iface = f"{host.name}-eth0"
         # -U = flush to disk as packets arrive, so the file is readable
         #      even if we stop the capture abruptly.
@@ -143,7 +158,7 @@ def check_captures_got_traffic():
     leaving you to discover it minutes later with tcpdump -r."""
     sizes = {}
     for name in [info["name"] for info in __import__("net_builder").HOSTS.values()]:
-        path = os.path.join(CAPTURE_DIR, f"{name}_normal.pcap")
+        path = os.path.join(CAPTURE_DIR, capture_filename(name))
         sizes[name] = os.path.getsize(path) if os.path.exists(path) else 0
 
     # An empty pcap is ~24 bytes (just the file header, no packets).

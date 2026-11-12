@@ -116,10 +116,14 @@ def load_arp_packets(pcap_path, label):
 
 
 def collect_all_packets():
+    # "*_normal*.pcap" (not just "*_normal.pcap") on purpose: if you ran
+    # generate_normal_traffic.py / simulate_attack.py more than once with a
+    # different CAPTURE_RUN_ID each time (to build up a bigger dataset),
+    # this picks up every run's files, e.g. gateway_normal_run2.pcap.
     records = []
-    for pcap_path in sorted(glob.glob(os.path.join(CAPTURE_DIR, "*_normal.pcap"))):
+    for pcap_path in sorted(glob.glob(os.path.join(CAPTURE_DIR, "*_normal*.pcap"))):
         records.extend(load_arp_packets(pcap_path, label=0))
-    for pcap_path in sorted(glob.glob(os.path.join(CAPTURE_DIR, "*_attack.pcap"))):
+    for pcap_path in sorted(glob.glob(os.path.join(CAPTURE_DIR, "*_attack*.pcap"))):
         records.extend(load_arp_packets(pcap_path, label=1))
     return records
 

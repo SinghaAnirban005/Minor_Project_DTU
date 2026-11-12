@@ -29,11 +29,19 @@ from mininet.log import setLogLevel
 
 
 # Central place for host names <-> IP addresses, so every script agrees.
+# 8 hosts total: 1 gateway, 6 victims, 1 attacker -- bumped up from the
+# original 4 (1 gateway, 2 victims, 1 attacker) for a more realistic LAN
+# size. "attacker" is deliberately kept last, with the highest IP, so
+# every other script that looks hosts up by name still works unchanged.
 HOSTS = {
     "h1": {"name": "gateway",  "ip": "10.0.0.1/24"},
     "h2": {"name": "victim1",  "ip": "10.0.0.2/24"},
     "h3": {"name": "victim2",  "ip": "10.0.0.3/24"},
-    "h4": {"name": "attacker", "ip": "10.0.0.4/24"},
+    "h4": {"name": "victim3",  "ip": "10.0.0.4/24"},
+    "h5": {"name": "victim4",  "ip": "10.0.0.5/24"},
+    "h6": {"name": "victim5",  "ip": "10.0.0.6/24"},
+    "h7": {"name": "victim6",  "ip": "10.0.0.7/24"},
+    "h8": {"name": "attacker", "ip": "10.0.0.8/24"},
 }
 
 
